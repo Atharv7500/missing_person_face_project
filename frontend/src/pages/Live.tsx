@@ -127,7 +127,7 @@ export default function Live() {
         </div>
 
         {/* Right Side: Logs */}
-        <div className="w-full lg:w-80 shrink-0 glass-card flex flex-col h-full min-h-[400px]">
+        <div className="w-full lg:w-80 shrink-0 glass-card flex flex-col h-full min-h-[400px] overflow-hidden">
            <div className="px-5 py-3 border-b border-slate-200 bg-white">
              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest" style={{ fontFamily: 'var(--font-serif)' }}>Terminal Logs</h3>
            </div>
