@@ -223,7 +223,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <!-- Right panel -->
+          {/* Right panel */}
           <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-6">
             {/* Operator Controls */}
             <div className="glass-card p-6 pb-7">
