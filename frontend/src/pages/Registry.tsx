@@ -1,4 +1,4 @@
-import { useState, useRef, FormEvent } from 'react'
+import { useState, useRef, FormEvent, useEffect } from 'react'
 import { personsApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { UserPlus, Upload, Trash2, Camera, Phone, Tag } from 'lucide-react'
@@ -14,11 +14,21 @@ export default function Registry() {
   const { user } = useAuth()
   const { data: persons, refresh, loading } = useFetch<Person[]>('/persons', [])
   const [form, setForm] = useState({ name: '', age: '', contact: '', priority: 'normal' })
+  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.log('Geolocation error:', err.message)
+      )
+    }
+  }, [])
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null
@@ -36,6 +46,10 @@ export default function Registry() {
       if (form.age) fd.append('age', form.age)
       if (form.contact) fd.append('contact', form.contact)
       fd.append('priority', form.priority)
+      if (location) {
+        fd.append('latitude', location.lat.toString())
+        fd.append('longitude', location.lng.toString())
+      }
       if (photo) fd.append('photo', photo)
       await personsApi.register(fd)
       setForm({ name: '', age: '', contact: '', priority: 'normal' })
@@ -127,6 +141,12 @@ export default function Registry() {
                   <option value="monitored">Monitored</option>
                 </select>
               </div>
+
+              {location && (
+                <p className="text-[10px] font-bold text-green-600 flex items-center gap-1 uppercase tracking-widest bg-green-50 p-2 rounded border border-green-200">
+                  📍 Location Detected: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                </p>
+              )}
 
               <button type="submit" disabled={submitting} className="btn-primary mt-6 shadow-sm py-2.5">
                 <Upload size={16} /> {submitting ? 'Registering…' : 'Register Entry'}

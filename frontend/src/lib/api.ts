@@ -69,6 +69,8 @@ export const personsApi = {
 
 export const detectionsApi = {
   list: (limit = 50) => api.get('/detections', { params: { limit } }),
+  create: (formData: FormData) =>
+    api.post('/detections', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   recent: () => api.get('/detections/recent'),
   updateStatus: (id: string, status: string) =>
     api.patch(`/detections/${id}/status`, null, { params: { status } }),

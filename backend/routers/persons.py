@@ -45,10 +45,34 @@ def _encode_image_bytes(image_bytes: bytes) -> Optional[str]:
     except Exception:
         return None
 
+import math
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371  # Earth radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
 @router.get("", response_model=list[PersonOut])
-async def list_persons(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+async def list_persons(
+    lat: Optional[float] = None, 
+    lon: Optional[float] = None,
+    db: AsyncSession = Depends(get_db), 
+    _: User = Depends(get_current_user)
+):
     result = await db.execute(select(MissingPerson).order_by(MissingPerson.registered_at.desc()))
-    return result.scalars().all()
+    persons = result.scalars().all()
+    
+    if lat is not None and lon is not None:
+        # In-memory Haversine distance sorting for MVP
+        def get_dist(p):
+            if p.latitude is None or p.longitude is None:
+                return float('inf')
+            return haversine(lat, lon, p.latitude, p.longitude)
+        persons = sorted(persons, key=get_dist)
+        
+    return persons
 
 @router.post("", response_model=PersonOut)
 async def register_person(
@@ -56,6 +80,8 @@ async def register_person(
     age: Optional[str] = Form(None),
     contact: Optional[str] = Form(None),
     priority: str = Form("normal"),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     photo: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -77,6 +103,8 @@ async def register_person(
         age=age,
         contact=contact,
         priority=priority,
+        latitude=latitude,
+        longitude=longitude,
         photo_url=photo_url,
         encoding=encoding,
         registered_by_id=current_user.id,

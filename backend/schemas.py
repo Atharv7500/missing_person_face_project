@@ -32,6 +32,8 @@ class PersonCreate(BaseModel):
     age: Optional[str] = None
     contact: Optional[str] = None
     priority: str = "normal"
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class PersonOut(BaseModel):
     id: str
@@ -40,6 +42,8 @@ class PersonOut(BaseModel):
     age: Optional[str] = None
     contact: Optional[str] = None
     priority: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     photo_url: Optional[str] = None
     registered_at: datetime
     class Config: from_attributes = True
@@ -50,6 +54,8 @@ class DetectionOut(BaseModel):
     person_name: Optional[str] = None
     case_id: Optional[str] = None
     location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     camera_id: Optional[str] = None
     timestamp: datetime
     snapshot_url: Optional[str] = None

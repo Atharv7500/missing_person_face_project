@@ -29,6 +29,8 @@ class MissingPerson(Base):
     age: Mapped[str | None]     = mapped_column(String(20), nullable=True)
     contact: Mapped[str | None] = mapped_column(Text, nullable=True)
     priority: Mapped[str]       = mapped_column(String(20), default="normal")
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None]= mapped_column(Float, nullable=True)
     photo_url: Mapped[str | None]  = mapped_column(Text, nullable=True)
     encoding: Mapped[str | None]   = mapped_column(Text, nullable=True)  # JSON string
     registered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -46,6 +48,8 @@ class Detection(Base):
     person_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     case_id: Mapped[str | None]     = mapped_column(String(20), nullable=True)
     location: Mapped[str | None]    = mapped_column(Text, nullable=True)
+    latitude: Mapped[float | None]  = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     camera_id: Mapped[str | None]   = mapped_column(String(30), nullable=True)
     timestamp: Mapped[datetime]     = mapped_column(DateTime, default=datetime.utcnow)
     snapshot_url: Mapped[str | None] = mapped_column(Text, nullable=True)

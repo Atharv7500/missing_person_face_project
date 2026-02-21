@@ -11,6 +11,8 @@ from database import init_db, AsyncSessionLocal
 from models import User
 from auth import hash_password
 from sqlalchemy import select
+from tasks import fetch_external_databases
+import asyncio
 
 from routers import auth, persons, detections, dashboard
 
@@ -32,6 +34,10 @@ async def lifespan(app: FastAPI):
             )
             db.add(admin)
             await db.commit()
+            
+    # Start external DB background worker
+    asyncio.create_task(fetch_external_databases())
+    
     yield
 
 app = FastAPI(

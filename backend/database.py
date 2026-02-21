@@ -1,4 +1,5 @@
 import os
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from config import get_settings
@@ -34,9 +35,20 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 async def init_db():
-    """Create all tables."""
+    """Create all tables and run basic migrations."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Simple migrations for existing local SQLite databases
+        if is_sqlite():
+            tables = ["missing_persons", "detections"]
+            columns = ["latitude", "longitude"]
+            for t in tables:
+                for c in columns:
+                    try:
+                        await conn.execute(text(f"ALTER TABLE {t} ADD COLUMN {c} FLOAT;"))
+                    except Exception:
+                        pass # Column already exists
 
 def is_sqlite() -> bool:
     return "sqlite" in DB_URL
