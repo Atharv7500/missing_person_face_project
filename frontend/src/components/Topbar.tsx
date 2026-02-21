@@ -12,7 +12,7 @@ export default function Topbar() {
     { label: 'Dashboard', path: '/' },
     { label: 'Registry', path: '/registry' },
     { label: 'Reports', path: '/reports' },
-    { label: 'Settings', path: '/settings' },
+    { label: 'Manual Scan', path: '/live' },
   ]
 
   return (

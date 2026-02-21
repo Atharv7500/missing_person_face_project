@@ -4,6 +4,7 @@ import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Registry from '@/pages/Registry'
 import Reports from '@/pages/Reports'
+import Live from '@/pages/Live'
 import Layout from '@/components/Layout'
 import './index.css'
 
@@ -39,6 +40,11 @@ function App() {
           <Route path="/reports" element={
             <ProtectedRoute>
               <Layout><Reports /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/live" element={
+            <ProtectedRoute>
+              <Layout><Live /></Layout>
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />
