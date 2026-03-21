@@ -30,17 +30,17 @@ async def _unique_case_id(db: AsyncSession) -> str:
             return cid
     raise HTTPException(status_code=500, detail="Could not generate unique case ID")
 
-def _encode_image_bytes(image_bytes: bytes) -> Optional[str]:
+def _encode_image_bytes(image_bytes: bytes) -> Optional[list[float]]:
     if not FR_AVAILABLE:
         return None
     try:
-        import io, json
+        import io
         from PIL import Image
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         img_array = np.array(img)
         encs = face_recognition.face_encodings(img_array)
         if encs:
-            return json.dumps({"values": encs[0].tolist()})
+            return encs[0].tolist()
         return None
     except Exception:
         return None

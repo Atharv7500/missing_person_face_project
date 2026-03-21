@@ -18,6 +18,7 @@ def send_sms_alert(to_number: str, message_body: str) -> bool:
         return True # Mock success instead of failing the whole flow
 
     try:
+        print("Sending SMS...")
         client = Client(settings.TWILIO_SID, settings.TWILIO_AUTH_TOKEN)
         message = client.messages.create(
             body=message_body,

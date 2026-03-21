@@ -3,9 +3,8 @@ import json
 from datetime import datetime
 from sqlalchemy import String, Text, Integer, Float, Boolean, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 from database import Base
-
-# Use portable types (String UUIDs + JSON) so models work with both SQLite and PostgreSQL
 
 class User(Base):
     __tablename__ = "users"
@@ -32,7 +31,7 @@ class MissingPerson(Base):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None]= mapped_column(Float, nullable=True)
     photo_url: Mapped[str | None]  = mapped_column(Text, nullable=True)
-    encoding: Mapped[str | None]   = mapped_column(Text, nullable=True)  # JSON string
+    encoding = mapped_column(Vector(128), nullable=True)  # pgvector embedding
     registered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     registered_by_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
 

@@ -67,11 +67,17 @@ export default function Live() {
         if (videoRef.current && canvasRef.current) {
           const video = videoRef.current
           const canvas = canvasRef.current
-          canvas.width = video.videoWidth
-          canvas.height = video.videoHeight
+          let w = video.videoWidth
+          let h = video.videoHeight
+          const MAX_DIM = 1000
+          if (w > h && w > MAX_DIM) { h *= MAX_DIM / w; w = MAX_DIM; }
+          else if (h > w && h > MAX_DIM) { w *= MAX_DIM / h; h = MAX_DIM; }
+          
+          canvas.width = w
+          canvas.height = h
           const ctx = canvas.getContext('2d')
           if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+            ctx.drawImage(video, 0, 0, w, h)
             canvas.toBlob(async (blob) => {
               if (blob) {
                 addLog('Transmitting to National Database...')

@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from database import get_db
@@ -58,26 +58,61 @@ async def create_detection(
     _: User = Depends(get_current_user)
 ):
     snapshot_url = None
+    target_encoding = None
+
     if photo:
         image_bytes = await photo.read()
         ext = (photo.filename or "snapshot.jpg").rsplit(".", 1)[-1].lower()
         filename = f"scan-{uuid.uuid4().hex[:8]}.{ext}"
         snapshot_url = await upload_photo(image_bytes, filename, photo.content_type or "image/jpeg")
-
-    # MOCK MATCHING for MVP
-    matched_person = None
-    confidence = random.uniform(0.6, 0.98) if random.random() > 0.5 else None
-    
-    if confidence:
-        result = await db.execute(select(MissingPerson).order_by(func.random()).limit(1))
-        matched_person = result.scalar_one_or_none()
         
+        # Extract embedding
+        if FR_AVAILABLE:
+            import io
+            from PIL import Image
+            try:
+                img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+                encs = face_recognition.face_encodings(np.array(img))
+                if encs:
+                    target_encoding = encs[0].tolist()
+            except Exception as e:
+                print(f"Error encoding scan: {e}")
+
+    matched_person = None
+    confidence = None
+
+    if target_encoding:
+        # Provide the list of floats directly to <->
+        # Note: In latest pgvector + sqlalchemy, we can use MissingPerson.encoding.l2_distance(target_encoding)
+        # We'll use scalar raw text query approach for simplicity or l2_distance
+        result = await db.execute(
+            select(MissingPerson)
+            .where(MissingPerson.encoding != None)
+            .order_by(MissingPerson.encoding.l2_distance(target_encoding))
+            .limit(1)
+        )
+        closest_person = result.scalar_one_or_none()
+        
+        if closest_person:
+            # Re-fetch the distance to compute confidence
+            dist_result = await db.execute(
+                select(MissingPerson.encoding.l2_distance(target_encoding))
+                .where(MissingPerson.id == closest_person.id)
+            )
+            dist = dist_result.scalar()
+            
+            # Threshold Check
+            if dist is not None and dist < 0.6:
+                matched_person = closest_person
+                # confidence is roughly 1 - dist (for example, distance of 0.3 -> 70% confidence)
+                confidence = max(0.0, 1.0 - dist)
+
     det = Detection(
         latitude=latitude,
         longitude=longitude,
         snapshot_url=snapshot_url,
         confidence=confidence,
-        status="pending" if confidence and confidence > 0.7 else "dismissed",
+        status="pending" if confidence and confidence > 0.4 else "dismissed",
         person_id=matched_person.id if matched_person else None,
         person_name=matched_person.name if matched_person else None,
         case_id=matched_person.case_id if matched_person else None,
@@ -150,11 +185,11 @@ async def update_status(
                         encs = face_recognition.face_encodings(np.array(img))
                         if encs:
                             new_enc = encs[0]
-                            old_data = json.loads(person.encoding)
-                            old_enc = np.array(old_data["values"])
-                            # Average the old and new encodings (0.7 weight to old, 0.3 to new) to slowly adapt
-                            merged_enc = (old_enc * 0.7) + (new_enc * 0.3)
-                            person.encoding = json.dumps({"values": merged_enc.tolist()})
+                            if person.encoding is not None:
+                                old_enc = np.array(person.encoding)
+                                # Average the old and new encodings (0.7 weight to old, 0.3 to new) to slowly adapt
+                                merged_enc = (old_enc * 0.7) + (new_enc * 0.3)
+                                person.encoding = merged_enc.tolist()
 
                 except Exception as e:
                     print(f"Error in continuous learning: {e}")

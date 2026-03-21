@@ -26,7 +26,7 @@ export default function Topbar() {
         </div>
         <div>
           <p className="text-lg font-bold tracking-widest text-white uppercase leading-none mb-1 shadow-sm" style={{ fontFamily: 'var(--font-serif)' }}>
-            Bureau of Identification
+            ReUnion AI
           </p>
           <p className="text-[9px] text-slate-400 font-bold tracking-[0.15em] uppercase leading-none">
             National Command Center • Secure Terminal

@@ -19,7 +19,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <footer className="bg-white border-t border-slate-200 px-8 py-5 flex flex-col lg:flex-row items-center justify-between gap-4 mt-auto z-10">
           <div>
             <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">
-              © 2025 Bureau of Identification. All rights reserved.
+              © 2025 ReUnion AI. All rights reserved.
             </p>
             <p className="text-[10px] text-slate-400 font-medium">
               Authorized Personnel Only. Unauthorized access is a federal offense.

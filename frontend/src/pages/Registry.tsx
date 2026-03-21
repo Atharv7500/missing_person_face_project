@@ -3,6 +3,7 @@ import { personsApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { UserPlus, Upload, Trash2, Camera, Phone, Tag } from 'lucide-react'
 import { useFetch } from '@/lib/useFetch'
+import { compressImage } from '@/lib/imageUtils'
 
 interface Person {
   id: string; case_id: string; name: string; age: string | null
@@ -50,7 +51,10 @@ export default function Registry() {
         fd.append('latitude', location.lat.toString())
         fd.append('longitude', location.lng.toString())
       }
-      if (photo) fd.append('photo', photo)
+      if (photo) {
+        const compressedBlob = await compressImage(photo)
+        fd.append('photo', compressedBlob, photo.name)
+      }
       await personsApi.register(fd)
       setForm({ name: '', age: '', contact: '', priority: 'normal' })
       setPhoto(null); setPreview(null)

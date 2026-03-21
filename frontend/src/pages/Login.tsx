@@ -47,7 +47,7 @@ export default function Login() {
             <Shield size={30} color="#93c5fd" />
           </div>
           <h1 className="text-2xl font-bold tracking-widest uppercase text-blue-100">
-            Bureau of Identification
+            ReUnion AI
           </h1>
           <p className="text-xs text-slate-400 tracking-[0.2em] uppercase mt-1">
             National Command Center · Secure Terminal
