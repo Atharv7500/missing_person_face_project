@@ -58,19 +58,19 @@ export const authApi = {
 export const personsApi = {
   list: () => api.get('/persons'),
   register: (formData: FormData) =>
-    api.post('/persons', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    api.post('/persons', formData, { headers: { 'Content-Type': undefined } }),
   delete: (id: string) => api.delete(`/persons/${id}`),
   updatePriority: (id: string, priority: string) => {
     const fd = new FormData()
     fd.append('priority', priority)
-    return api.patch(`/persons/${id}/priority`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return api.patch(`/persons/${id}/priority`, fd, { headers: { 'Content-Type': undefined } })
   },
 }
 
 export const detectionsApi = {
   list: (limit = 50) => api.get('/detections', { params: { limit } }),
   create: (formData: FormData) =>
-    api.post('/detections', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    api.post('/detections', formData, { headers: { 'Content-Type': undefined } }),
   recent: () => api.get('/detections/recent'),
   updateStatus: (id: string, status: string) =>
     api.patch(`/detections/${id}/status`, null, { params: { status } }),
