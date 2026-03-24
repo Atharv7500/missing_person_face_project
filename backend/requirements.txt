@@ -14,7 +14,7 @@ twilio>=8.0.0
 pydantic[email]>=2.6.0
 pydantic-settings>=2.2.0
 httpx>=0.27.0
-# face recognition (install separately if cmake/dlib available)
-# face-recognition>=1.3.0
-# opencv-python>=4.8.0
-# numpy>=1.24.0
+# Native OpenCV extraction dependencies
+opencv-python>=4.8.0
+numpy>=1.24.0
+requests>=2.31.0

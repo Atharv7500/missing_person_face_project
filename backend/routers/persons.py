@@ -11,10 +11,10 @@ from storage import upload_photo, delete_blob
 import random
 
 try:
-    import face_recognition
-    import numpy as np
+    from face_utils import get_face_encoding
     FR_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    print(f"Face extraction unavailable: {e}")
     FR_AVAILABLE = False
 
 router = APIRouter(prefix="/persons", tags=["persons"])
@@ -33,17 +33,7 @@ async def _unique_case_id(db: AsyncSession) -> str:
 def _encode_image_bytes(image_bytes: bytes) -> Optional[list[float]]:
     if not FR_AVAILABLE:
         return None
-    try:
-        import io
-        from PIL import Image
-        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        img_array = np.array(img)
-        encs = face_recognition.face_encodings(img_array)
-        if encs:
-            return encs[0].tolist()
-        return None
-    except Exception:
-        return None
+    return get_face_encoding(image_bytes)
 
 import math
 

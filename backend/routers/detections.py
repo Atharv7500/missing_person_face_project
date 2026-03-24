@@ -14,10 +14,11 @@ import random
 import os
 
 try:
-    import face_recognition
+    from face_utils import get_face_encoding
     import numpy as np
     FR_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    print(f"Face extraction unavailable: {e}")
     FR_AVAILABLE = False
 
 router = APIRouter(prefix="/detections", tags=["detections"])
@@ -68,15 +69,7 @@ async def create_detection(
         
         # Extract embedding
         if FR_AVAILABLE:
-            import io
-            from PIL import Image
-            try:
-                img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-                encs = face_recognition.face_encodings(np.array(img))
-                if encs:
-                    target_encoding = encs[0].tolist()
-            except Exception as e:
-                print(f"Error encoding scan: {e}")
+            target_encoding = get_face_encoding(image_bytes)
 
     matched_person = None
     confidence = None
@@ -163,8 +156,6 @@ async def update_status(
 
             # 2. Continuous Learning: Average new encoding
             if FR_AVAILABLE and det.snapshot_url and person.encoding:
-                import io
-                from PIL import Image
                 import httpx
                 
                 try:
@@ -181,14 +172,13 @@ async def update_status(
                             img_bytes = resp.content
 
                     if img_bytes:
-                        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                        encs = face_recognition.face_encodings(np.array(img))
-                        if encs:
-                            new_enc = encs[0]
+                        new_enc_list = get_face_encoding(img_bytes)
+                        if new_enc_list:
                             if person.encoding is not None:
                                 old_enc = np.array(person.encoding)
+                                new_enc_np = np.array(new_enc_list)
                                 # Average the old and new encodings (0.7 weight to old, 0.3 to new) to slowly adapt
-                                merged_enc = (old_enc * 0.7) + (new_enc * 0.3)
+                                merged_enc = (old_enc * 0.7) + (new_enc_np * 0.3)
                                 person.encoding = merged_enc.tolist()
 
                 except Exception as e:
