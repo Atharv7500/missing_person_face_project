@@ -50,66 +50,78 @@ export default function Live() {
     return () => stopCamera()
   }, [stream])
 
-  const toggleScan = async () => {
-    if (!stream) return
-    setIsScanning(!isScanning)
-    
-    if (!isScanning) {
-      addLog('Initiating manual face scan sequence...')
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null
+    if (isScanning && stream) {
+      addLog('LIVE SURVEILLANCE ACTIVE: Initiating continuous scan cycle (3s interval)...')
       
-      // Basic client-side liveness check mock (Requirement 4)
-      addLog('Analyzing depth mapping for liveness...')
-      
-      setTimeout(async () => {
-        addLog('Liveness confirmed. Capturing frame.')
+      const captureFrame = () => {
+        if (!videoRef.current || !canvasRef.current) return
         
-        // Capture frame
-        if (videoRef.current && canvasRef.current) {
-          const video = videoRef.current
-          const canvas = canvasRef.current
-          let w = video.videoWidth
-          let h = video.videoHeight
-          const MAX_DIM = 1000
-          if (w > h && w > MAX_DIM) { h *= MAX_DIM / w; w = MAX_DIM; }
-          else if (h > w && h > MAX_DIM) { w *= MAX_DIM / h; h = MAX_DIM; }
-          
-          canvas.width = w
-          canvas.height = h
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, w, h)
-            canvas.toBlob(async (blob) => {
-              if (blob) {
-                addLog('Transmitting to National Database...')
-                const fd = new FormData()
-                fd.append('photo', blob, 'scan.jpg')
-                if (location) {
-                  fd.append('latitude', location.lat.toString())
-                  fd.append('longitude', location.lng.toString())
-                  addLog(`Geotag attached: ${location.lat.toFixed(2)}, ${location.lng.toFixed(2)}`)
-                }
-                
-                try {
-                  const res = await detectionsApi.create(fd)
-                  if (res.data.face_detected === false) {
-                    addLog('ERROR: No face detected in the frame. Please align the subject properly.')
-                  } else {
-                    addLog(res.data.person_id 
-                      ? `MATCH FOUND: ${res.data.person_name} (${res.data.confidence ? (res.data.confidence*100).toFixed(1) : ''}% confidence)`
-                      : 'NO MATCH FOUND. Subject cleared.')
-                  }
-                } catch (e) {
-                  addLog('ERROR: Connection to main server failed.')
-                }
-                setIsScanning(false)
+        const video = videoRef.current
+        const canvas = canvasRef.current
+        let w = video.videoWidth
+        let h = video.videoHeight
+        if (w === 0 || h === 0) return
+        
+        const MAX_DIM = 1000
+        if (w > h && w > MAX_DIM) { h *= MAX_DIM / w; w = MAX_DIM; }
+        else if (h > w && h > MAX_DIM) { w *= MAX_DIM / h; h = MAX_DIM; }
+        
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, w, h)
+          canvas.toBlob(async (blob) => {
+            if (blob) {
+              const fd = new FormData()
+              fd.append('photo', blob, 'scan.jpg')
+              if (location) {
+                fd.append('latitude', location.lat.toString())
+                fd.append('longitude', location.lng.toString())
               }
-            }, 'image/jpeg')
-          }
+              
+              try {
+                const res = await detectionsApi.create(fd)
+                if (res.data.face_detected === false) {
+                   // Quiet swallow or minimal log to prevent log spam frame-to-frame if empty scene
+                } else {
+                  if (res.data.person_id) {
+                    addLog(`🚨 MATCH FOUND: ${res.data.person_name} (${res.data.confidence ? (res.data.confidence*100).toFixed(1) : ''}% confidence)`)
+                  } else {
+                    addLog('Subject evaluated: NO MATCH in registry. Cleared.')
+                  }
+                }
+              } catch (e) {
+                addLog('ERROR: Connection to main server failed.')
+              }
+            }
+          }, 'image/jpeg')
         }
-      }, 2000)
+      }
+      
+      // Perform one initial scan then loop
+      captureFrame()
+      interval = setInterval(captureFrame, 3000)
+      
     } else {
-      addLog('Manual scan halted.')
+      if (interval) {
+        clearInterval(interval)
+        addLog('Live surveillance scan halted.')
+      }
     }
+    
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanning, stream])
+
+  const toggleScan = () => {
+    if (!stream) return
+    if (!isScanning) setLogs([]) // Clear old logs when starting fresh scan
+    setIsScanning(!isScanning)
   }
 
   return (
@@ -121,7 +133,7 @@ export default function Live() {
           <span className="text-slate-800 font-semibold">Live Surveillance</span>
         </p>
         <h1 className="text-3xl font-bold text-slate-900 mt-2 flex items-center gap-3" style={{ fontFamily: 'var(--font-serif)', letterSpacing: '-0.02em' }}>
-          <Video className="text-blue-600" size={28} /> Initiate Manual Scan
+          <Video className="text-blue-600" size={28} /> Active Surveillance feed
         </h1>
       </div>
 
