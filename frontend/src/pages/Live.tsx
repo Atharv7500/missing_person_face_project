@@ -5,7 +5,6 @@ import { detectionsApi } from '@/lib/api'
 export default function Live() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<string>('')
   const [isScanning, setIsScanning] = useState(false)
@@ -56,18 +55,25 @@ export default function Live() {
   }, [stream])
 
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null
     if (isScanning && stream) {
-      addLog('LIVE SURVEILLANCE ACTIVE: Initiating continuous scan cycle (1.5s interval)...')
+      addLog('Initiating dedicated face scan sequence...')
+      addLog('Analyzing depth mapping for liveness...')
       
-      const captureFrame = () => {
-        if (!videoRef.current || !canvasRef.current) return
+      const timer = setTimeout(() => {
+        addLog('Liveness confirmed. Capturing reference frame.')
+        if (!videoRef.current || !canvasRef.current) {
+            setIsScanning(false)
+            return
+        }
         
         const video = videoRef.current
         const canvas = canvasRef.current
         let w = video.videoWidth
         let h = video.videoHeight
-        if (w === 0 || h === 0) return
+        if (w === 0 || h === 0) {
+            setIsScanning(false)
+            return
+        }
         
         const MAX_DIM = 1000
         if (w > h && w > MAX_DIM) { h *= MAX_DIM / w; w = MAX_DIM; }
@@ -80,70 +86,38 @@ export default function Live() {
           ctx.drawImage(video, 0, 0, w, h)
           canvas.toBlob(async (blob) => {
             if (blob) {
+              addLog('Transmitting payload to National Registry Database...')
               const fd = new FormData()
               fd.append('photo', blob, 'scan.jpg')
               if (location) {
                 fd.append('latitude', location.lat.toString())
                 fd.append('longitude', location.lng.toString())
+                addLog(`Geotag attached: ${location.lat.toFixed(2)}, ${location.lng.toFixed(2)}`)
               }
               
               try {
-                const res = await detectionsApi.liveScan(fd)
-                const faces = res.data.faces || [];
-                
-                const overlay = overlayCanvasRef.current;
-                const oCtx = overlay?.getContext('2d');
-                if (overlay && oCtx) {
-                   overlay.width = w;
-                   overlay.height = h;
-                   oCtx.clearRect(0, 0, w, h);
-                   
-                   let anyMatch = false;
-                   faces.forEach((f: any) => {
-                      const [x=0, y=0, x2=w, y2=h] = f.box;
-                      const bw = x2 - x;
-                      const bh = y2 - y;
-                      
-                      const isMatch = !!f.match;
-                      oCtx.strokeStyle = isMatch ? '#22c55e' : '#ef4444'; // green/red
-                      oCtx.lineWidth = 3;
-                      oCtx.strokeRect(x, y, bw, bh);
-                      
-                      const label = isMatch ? `MATCH: ${f.match.name} (${(f.match.confidence*100).toFixed(1)}%)` : 'Unknown';
-                      oCtx.font = 'bold 16px sans-serif';
-                      const tw = oCtx.measureText(label).width;
-                      
-                      oCtx.fillStyle = isMatch ? '#22c55e' : '#ef4444';
-                      oCtx.fillRect(x, y - 24, tw + 8, 24);
-                      
-                      oCtx.fillStyle = 'white';
-                      oCtx.fillText(label, x + 4, y - 6);
-                      
-                      if(isMatch) {
-                          anyMatch = true;
-                          addLog(`🚨 MATCH FOUND: ${f.match.name} (${(f.match.confidence*100).toFixed(1)}% confidence)`)
-                      }
-                   });
-                   
-                   if (faces.length > 0 && !anyMatch) {
-                      addLog(`Subject(s) evaluated: NO MATCH in registry.`);
+                const res = await detectionsApi.create(fd)
+                if (res.data.face_detected === false) {
+                   addLog(`ERROR: No face detected. Please align the subject properly inside the frame.`)
+                } else {
+                   if (res.data.person_id) {
+                     addLog(`🚨 MATCH FOUND: ${res.data.person_name} (${res.data.confidence ? (res.data.confidence*100).toFixed(1) : ''}% confidence)`)
+                   } else {
+                     addLog(`Subject evaluated: NO MATCH in registry.`)
                    }
                 }
               } catch (e) {
                 addLog('ERROR: Connection to main server failed.')
+              } finally {
+                setIsScanning(false)
+                addLog('Scan cycle completed.')
               }
             }
           }, 'image/jpeg')
         }
-      }
+      }, 2000)
       
-      // Perform one initial scan then loop
-      captureFrame()
-      interval = setInterval(captureFrame, 1500)
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval)
+      return () => clearTimeout(timer)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScanning, stream])
@@ -192,14 +166,6 @@ export default function Live() {
               muted 
               className={`w-full h-full object-cover ${!stream ? 'hidden' : ''}`} 
             />
-            
-            {stream && (
-              <canvas 
-                 ref={overlayCanvasRef} 
-                 className="absolute inset-0 w-full h-full pointer-events-none object-cover" 
-                 style={{ opacity: isScanning ? 1 : 0 }}
-              />
-            )}
             
             {!stream && !error && (
               <div className="flex flex-col items-center text-slate-500">
