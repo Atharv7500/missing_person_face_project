@@ -91,9 +91,13 @@ export default function Live() {
                 
                 try {
                   const res = await detectionsApi.create(fd)
-                  addLog(res.data.person_id 
-                    ? `MATCH FOUND: ${res.data.person_name} (${res.data.confidence ? (res.data.confidence*100).toFixed(1) : ''}% confidence)`
-                    : 'NO MATCH FOUND. Subject cleared.')
+                  if (res.data.face_detected === false) {
+                    addLog('ERROR: No face detected in the frame. Please align the subject properly.')
+                  } else {
+                    addLog(res.data.person_id 
+                      ? `MATCH FOUND: ${res.data.person_name} (${res.data.confidence ? (res.data.confidence*100).toFixed(1) : ''}% confidence)`
+                      : 'NO MATCH FOUND. Subject cleared.')
+                  }
                 } catch (e) {
                   addLog('ERROR: Connection to main server failed.')
                 }

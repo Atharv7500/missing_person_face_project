@@ -116,7 +116,12 @@ async def create_detection(
     db.add(det)
     await db.commit()
     await db.refresh(det)
-    return det
+    
+    # Bundle response with face_detected flag
+    from fastapi.encoders import jsonable_encoder
+    resp = jsonable_encoder(det)
+    resp["face_detected"] = (target_encoding is not None)
+    return resp
 
 @router.get("/recent", response_model=list[DetectionOut])
 async def recent_detections(

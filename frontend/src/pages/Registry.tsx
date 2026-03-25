@@ -21,6 +21,10 @@ export default function Registry() {
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -36,6 +40,45 @@ export default function Registry() {
     setPhoto(f)
     if (f) setPreview(URL.createObjectURL(f))
   }
+
+  useEffect(() => {
+    if (modalOpen) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(s => {
+           setStream(s)
+           if (videoRef.current) videoRef.current.srcObject = s
+        })
+        .catch(err => {
+           console.error('Camera error', err)
+           setMsg('Camera access denied or unavailable.')
+           setModalOpen(false)
+        })
+    } else {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop())
+        setStream(null)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen])
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const v = videoRef.current;
+      const c = canvasRef.current;
+      c.width = v.videoWidth;
+      c.height = v.videoHeight;
+      c.getContext('2d')?.drawImage(v, 0, 0);
+      c.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'webcam.jpg', { type: 'image/jpeg' });
+          setPhoto(file);
+          setPreview(URL.createObjectURL(blob));
+          setModalOpen(false);
+        }
+      }, 'image/jpeg');
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -74,6 +117,7 @@ export default function Registry() {
   }
 
   return (
+    <>
     <div className="max-w-[1280px] mx-auto px-6 py-8">
       <div className="mb-6">
         <p className="text-xs text-slate-500 mb-1 font-medium">
@@ -104,14 +148,16 @@ export default function Registry() {
               {/* Photo upload */}
               <div className="flex flex-col items-center gap-2 mb-4">
                 <div
-                  onClick={() => fileRef.current?.click()}
-                  className="w-28 h-28 rounded-lg border-2 border-dashed bg-slate-50 border-slate-300 cursor-pointer flex items-center justify-center overflow-hidden transition-colors hover:border-slate-500">
+                  className="w-28 h-28 rounded-lg border-2 border-dashed bg-slate-50 border-slate-300 flex items-center justify-center overflow-hidden transition-colors">
                   {preview
                     ? <img src={preview} className="w-full h-full object-cover" alt="" />
                     : <Camera size={28} className="text-slate-400" />
                   }
                 </div>
-                <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase mt-1">Upload Photo</p>
+                <div className="flex gap-2 w-full mt-1">
+                   <button type="button" onClick={() => fileRef.current?.click()} className="flex-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 rounded-md font-medium border border-slate-200 transition">Upload File</button>
+                   <button type="button" onClick={() => setModalOpen(true)} className="flex-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded-md font-medium border border-blue-200 transition">Use Webcam</button>
+                </div>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
               </div>
 
@@ -213,5 +259,31 @@ export default function Registry() {
         </div>
       </div>
     </div>
+
+      {/* Webcam Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl overflow-hidden max-w-lg w-full shadow-2xl">
+            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <Camera size={18} className="text-blue-600"/> Take Photo
+              </h3>
+              <button type="button" onClick={() => setModalOpen(false)} className="text-slate-400 font-bold hover:text-slate-600 transition-colors text-xl leading-none">&times;</button>
+            </div>
+            <div className="bg-black relative aspect-square sm:aspect-video flex items-center justify-center">
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              <canvas ref={canvasRef} className="hidden" />
+              {!stream && <p className="text-white text-sm animate-pulse">Starting camera...</p>}
+            </div>
+            <div className="p-4 flex gap-3 justify-end bg-slate-50">
+              <button onClick={() => setModalOpen(false)} type="button" className="btn-secondary px-4 py-2 !w-auto">Cancel</button>
+              <button onClick={capturePhoto} type="button" disabled={!stream} className="btn-primary px-4 py-2 flex items-center gap-2 !w-auto disabled:opacity-50">
+                <Camera size={16}/> Capture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
         if not result.scalar_one_or_none():
             admin = User(
                 username="admin",
-                password_hash=hash_password("admin123"),
+                password_hash=await hash_password("admin123"),
                 role="admin",
                 clearance_level=5,
             )

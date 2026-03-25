@@ -18,7 +18,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(body.password, user.password_hash):
+    if not user or not await verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return TokenResponse(
         access_token=create_access_token(user.id, user.username, user.role),
@@ -56,7 +56,7 @@ async def create_user(body: UserCreate, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=409, detail="Username already exists")
     user = User(
         username=body.username,
-        password_hash=hash_password(body.password),
+        password_hash=await hash_password(body.password),
         role=body.role,
         clearance_level=body.clearance_level,
     )

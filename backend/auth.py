@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 import bcrypt
+import anyio
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -15,11 +16,15 @@ settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # Use bcrypt directly (avoids passlib + bcrypt 4.x incompatibility)
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+async def hash_password(password: str) -> str:
+    def _hash():
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(10)).decode("utf-8")
+    return await anyio.to_thread.run_sync(_hash)
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+async def verify_password(plain: str, hashed: str) -> bool:
+    def _verify():
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    return await anyio.to_thread.run_sync(_verify)
 
 def create_token(data: dict, expires_delta: timedelta) -> str:
     payload = data.copy()

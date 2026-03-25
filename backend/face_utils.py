@@ -65,6 +65,12 @@ def get_face_encoding(image_bytes: bytes) -> list[float] | None:
         box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
         (startX, startY, endX, endY) = box.astype("int")
 
+        # Clamp bounding box to image dimensions
+        startX = max(0, startX)
+        startY = max(0, startY)
+        endX = max(0, min(w, endX))
+        endY = max(0, min(h, endY))
+
         # Extract the face ROI (Region of Interest)
         face = image[startY:endY, startX:endX]
         if face.shape[0] < 20 or face.shape[1] < 20:

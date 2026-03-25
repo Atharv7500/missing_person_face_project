@@ -62,6 +62,7 @@ class DetectionOut(BaseModel):
     confidence: Optional[float] = None
     sms_sent: bool
     status: str
+    face_detected: Optional[bool] = None
     class Config: from_attributes = True
 
 # ── Dashboard Stats ───────────────────────────
