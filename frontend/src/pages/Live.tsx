@@ -174,15 +174,21 @@ export default function Live() {
               </div>
             )}
 
-            {/* Scan Overlay UI */}
-            {isScanning && (
-              <div className="absolute inset-0 pointer-events-none border-2 border-blue-500 animate-pulse">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-blue-400 opacity-50 relative">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-blue-500" />
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-blue-500" />
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-blue-500" />
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-blue-500" />
+            {/* Aadhaar-Style Scanner Overlay */}
+            {stream && (
+              <div className="absolute inset-0 pointer-events-none bg-black/40">
+                <div className="scanner-frame">
+                  <div className="scanner-frame-bottom-left" />
+                  <div className="scanner-frame-bottom-right" />
+                  {isScanning && <div className="aadhaar-laser" />}
                 </div>
+                {isScanning && (
+                  <div className="absolute bottom-[20%] w-full text-center">
+                    <p className="text-white font-mono font-bold tracking-widest uppercase text-xs sm:text-sm animate-pulse bg-blue-600/90 inline-block px-4 py-1.5 rounded-full shadow-lg">
+                      Evaluating Subject...
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             

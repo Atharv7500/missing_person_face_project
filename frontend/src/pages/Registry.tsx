@@ -25,6 +25,7 @@ export default function Registry() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [isScanning, setIsScanning] = useState(false)
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -63,21 +64,27 @@ export default function Registry() {
   }, [modalOpen])
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const v = videoRef.current;
-      const c = canvasRef.current;
-      c.width = v.videoWidth;
-      c.height = v.videoHeight;
-      c.getContext('2d')?.drawImage(v, 0, 0);
-      c.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], 'webcam.jpg', { type: 'image/jpeg' });
-          setPhoto(file);
-          setPreview(URL.createObjectURL(blob));
-          setModalOpen(false);
-        }
-      }, 'image/jpeg');
-    }
+    setIsScanning(true)
+    setTimeout(() => {
+      if (videoRef.current && canvasRef.current) {
+        const v = videoRef.current;
+        const c = canvasRef.current;
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        c.getContext('2d')?.drawImage(v, 0, 0);
+        c.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'webcam.jpg', { type: 'image/jpeg' });
+            setPhoto(file);
+            setPreview(URL.createObjectURL(blob));
+            setModalOpen(false);
+            setIsScanning(false);
+          }
+        }, 'image/jpeg');
+      } else {
+        setIsScanning(false);
+      }
+    }, 1500)
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -274,11 +281,28 @@ export default function Registry() {
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               <canvas ref={canvasRef} className="hidden" />
               {!stream && <p className="text-white text-sm animate-pulse">Starting camera...</p>}
+              
+              {stream && (
+                <div className="absolute inset-0 pointer-events-none bg-black/40">
+                  <div className="scanner-frame">
+                    <div className="scanner-frame-bottom-left" />
+                    <div className="scanner-frame-bottom-right" />
+                    {isScanning && <div className="aadhaar-laser" />}
+                  </div>
+                  {isScanning && (
+                    <div className="absolute bottom-[20%] w-full text-center">
+                      <p className="text-white font-mono font-bold tracking-widest uppercase text-xs sm:text-sm animate-pulse bg-blue-600/90 inline-block px-4 py-1.5 rounded-full shadow-lg">
+                        Scanning Biometrics...
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="p-4 flex gap-3 justify-end bg-slate-50">
-              <button onClick={() => setModalOpen(false)} type="button" className="btn-secondary px-4 py-2 !w-auto">Cancel</button>
-              <button onClick={capturePhoto} type="button" disabled={!stream} className="btn-primary px-4 py-2 flex items-center gap-2 !w-auto disabled:opacity-50">
-                <Camera size={16}/> Capture
+              <button onClick={() => setModalOpen(false)} type="button" disabled={isScanning} className="btn-secondary px-4 py-2 !w-auto disabled:opacity-50">Cancel</button>
+              <button onClick={capturePhoto} type="button" disabled={!stream || isScanning} className="btn-primary px-4 py-2 flex items-center gap-2 !w-auto disabled:opacity-50">
+                <Camera size={16}/> {isScanning ? 'Scanning...' : 'Capture Frame'}
               </button>
             </div>
           </div>
