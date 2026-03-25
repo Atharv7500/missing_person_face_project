@@ -58,7 +58,7 @@ def get_face_encoding(image_bytes: bytes) -> list[float] | None:
         i = np.argmax(detections[0, 0, :, 2])
         confidence = detections[0, 0, i, 2]
 
-        if confidence < 0.5:
+        if confidence < 0.3:
             return None # Face not confident enough
 
         # Compute bounding box
@@ -73,7 +73,7 @@ def get_face_encoding(image_bytes: bytes) -> list[float] | None:
 
         # Extract the face ROI (Region of Interest)
         face = image[startY:endY, startX:endX]
-        if face.shape[0] < 20 or face.shape[1] < 20:
+        if face.shape[0] < 10 or face.shape[1] < 10:
             return None # Face too small
 
         # 3. Get 128-d Embedding using OpenFace via OpenCV
@@ -100,7 +100,7 @@ def scan_frame(image_bytes: bytes) -> list[dict]:
         detections = detector.forward()
         for i in range(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
-            if confidence > 0.5:
+            if confidence > 0.3:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
                 startX = max(0, startX)
@@ -108,7 +108,7 @@ def scan_frame(image_bytes: bytes) -> list[dict]:
                 endX = max(0, min(w, endX))
                 endY = max(0, min(h, endY))
                 face = image[startY:endY, startX:endX]
-                if face.shape[0] < 20 or face.shape[1] < 20: continue
+                if face.shape[0] < 10 or face.shape[1] < 10: continue
                 faceBlob = cv2.dnn.blobFromImage(cv2.resize(face, (96, 96)), 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
                 embedder.setInput(faceBlob)
                 vec = embedder.forward().flatten()

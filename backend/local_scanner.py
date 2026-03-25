@@ -52,7 +52,7 @@ def main():
             confidence = detections[0, 0, i, 2]
             
             # Confidence threshold to confirm it's actually a face
-            if confidence > 0.5:
+            if confidence > 0.3:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
                 

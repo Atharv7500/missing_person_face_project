@@ -68,16 +68,12 @@ export default function Live() {
         
         const video = videoRef.current
         const canvas = canvasRef.current
-        let w = video.videoWidth
-        let h = video.videoHeight
+        const w = video.videoWidth
+        const h = video.videoHeight
         if (w === 0 || h === 0) {
             setIsScanning(false)
             return
         }
-        
-        const MAX_DIM = 1000
-        if (w > h && w > MAX_DIM) { h *= MAX_DIM / w; w = MAX_DIM; }
-        else if (h > w && h > MAX_DIM) { w *= MAX_DIM / h; h = MAX_DIM; }
         
         canvas.width = w
         canvas.height = h
@@ -98,7 +94,7 @@ export default function Live() {
               try {
                 const res = await detectionsApi.create(fd)
                 if (res.data.face_detected === false) {
-                   addLog(`ERROR: No face detected. Please align the subject properly inside the frame.`)
+                   addLog(`WARNING: No face detected. Please align the subject properly inside the frame.`)
                 } else {
                    if (res.data.person_id) {
                      addLog(`🚨 MATCH FOUND: ${res.data.person_name} (${res.data.confidence ? (res.data.confidence*100).toFixed(1) : ''}% confidence)`)
@@ -113,7 +109,7 @@ export default function Live() {
                 addLog('Scan cycle completed.')
               }
             }
-          }, 'image/jpeg')
+          }, 'image/jpeg', 1.0)
         }
       }, 2000)
       
