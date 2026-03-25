@@ -87,3 +87,37 @@ def get_face_encoding(image_bytes: bytes) -> list[float] | None:
     except Exception as e:
         print(f"[OpenCV Face] Warning: Could not extract face. {e}")
         return None
+
+def scan_frame(image_bytes: bytes) -> list[dict]:
+    faces_data = []
+    try:
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        if image is None: return faces_data
+        (h, w) = image.shape[:2]
+        blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+        detector.setInput(blob)
+        detections = detector.forward()
+        for i in range(0, detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            if confidence > 0.5:
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (startX, startY, endX, endY) = box.astype("int")
+                startX = max(0, startX)
+                startY = max(0, startY)
+                endX = max(0, min(w, endX))
+                endY = max(0, min(h, endY))
+                face = image[startY:endY, startX:endX]
+                if face.shape[0] < 20 or face.shape[1] < 20: continue
+                faceBlob = cv2.dnn.blobFromImage(cv2.resize(face, (96, 96)), 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
+                embedder.setInput(faceBlob)
+                vec = embedder.forward().flatten()
+                faces_data.append({
+                    "box": [int(startX), int(startY), int(endX), int(endY)],
+                    "confidence": float(confidence),
+                    "encoding": vec.tolist()
+                })
+        return faces_data
+    except Exception as e:
+        print(f"[OpenCV Scan Frame] Warning: {e}")
+        return faces_data

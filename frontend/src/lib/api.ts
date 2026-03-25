@@ -71,6 +71,8 @@ export const detectionsApi = {
   list: (limit = 50) => api.get('/detections', { params: { limit } }),
   create: (formData: FormData) =>
     api.post('/detections', formData, { headers: { 'Content-Type': undefined } }),
+  liveScan: (formData: FormData) =>
+    api.post('/detections/live_scan', formData, { headers: { 'Content-Type': undefined } }),
   recent: () => api.get('/detections/recent'),
   updateStatus: (id: string, status: string) =>
     api.patch(`/detections/${id}/status`, null, { params: { status } }),

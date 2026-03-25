@@ -191,3 +191,54 @@ async def update_status(
                 
     await db.commit()
     return {"message": "Status updated"}
+
+@router.post("/live_scan")
+async def process_live_scan(
+    photo: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    if not FR_AVAILABLE:
+        return {"faces": []}
+        
+    image_bytes = await photo.read()
+    from face_utils import scan_frame
+    faces_data = scan_frame(image_bytes)
+    
+    if not faces_data:
+        return {"faces": []}
+        
+    result = await db.execute(select(MissingPerson).where(MissingPerson.encoding != None))
+    persons = result.scalars().all()
+    
+    out_faces = []
+    import numpy as np
+    
+    for face in faces_data:
+        vec = np.array(face["encoding"])
+        best_dist = float('inf')
+        best_match = None
+        
+        for p in persons:
+            known_vec = np.array(p.encoding)
+            dist = np.linalg.norm(known_vec - vec)
+            if dist < best_dist:
+                best_dist = dist
+                best_match = p
+                
+        if best_dist < 0.6 and best_match:
+            conf_pct = max(0.0, 1.0 - best_dist)
+            out_faces.append({
+                "box": face["box"],
+                "match": {
+                    "name": best_match.name,
+                    "confidence": float(conf_pct),
+                    "person_id": best_match.id
+                }
+            })
+        else:
+            out_faces.append({
+                "box": face["box"],
+                "match": None
+            })
+            
+    return {"faces": out_faces}

@@ -5,6 +5,7 @@ import { detectionsApi } from '@/lib/api'
 export default function Live() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<string>('')
   const [isScanning, setIsScanning] = useState(false)
@@ -42,6 +43,10 @@ export default function Live() {
     if (stream) {
       stream.getTracks().forEach(t => t.stop())
       setStream(null)
+      if (isScanning) {
+        setIsScanning(false)
+        addLog('Live surveillance scan halted due to disconnect.')
+      }
       addLog('Camera feed disconnected.')
     }
   }
@@ -53,7 +58,7 @@ export default function Live() {
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null
     if (isScanning && stream) {
-      addLog('LIVE SURVEILLANCE ACTIVE: Initiating continuous scan cycle (3s interval)...')
+      addLog('LIVE SURVEILLANCE ACTIVE: Initiating continuous scan cycle (1.5s interval)...')
       
       const captureFrame = () => {
         if (!videoRef.current || !canvasRef.current) return
@@ -83,15 +88,46 @@ export default function Live() {
               }
               
               try {
-                const res = await detectionsApi.create(fd)
-                if (res.data.face_detected === false) {
-                   // Quiet swallow or minimal log to prevent log spam frame-to-frame if empty scene
-                } else {
-                  if (res.data.person_id) {
-                    addLog(`🚨 MATCH FOUND: ${res.data.person_name} (${res.data.confidence ? (res.data.confidence*100).toFixed(1) : ''}% confidence)`)
-                  } else {
-                    addLog('Subject evaluated: NO MATCH in registry. Cleared.')
-                  }
+                const res = await detectionsApi.liveScan(fd)
+                const faces = res.data.faces || [];
+                
+                const overlay = overlayCanvasRef.current;
+                const oCtx = overlay?.getContext('2d');
+                if (overlay && oCtx) {
+                   overlay.width = w;
+                   overlay.height = h;
+                   oCtx.clearRect(0, 0, w, h);
+                   
+                   let anyMatch = false;
+                   faces.forEach((f: any) => {
+                      const [x=0, y=0, x2=w, y2=h] = f.box;
+                      const bw = x2 - x;
+                      const bh = y2 - y;
+                      
+                      const isMatch = !!f.match;
+                      oCtx.strokeStyle = isMatch ? '#22c55e' : '#ef4444'; // green/red
+                      oCtx.lineWidth = 3;
+                      oCtx.strokeRect(x, y, bw, bh);
+                      
+                      const label = isMatch ? `MATCH: ${f.match.name} (${(f.match.confidence*100).toFixed(1)}%)` : 'Unknown';
+                      oCtx.font = 'bold 16px sans-serif';
+                      const tw = oCtx.measureText(label).width;
+                      
+                      oCtx.fillStyle = isMatch ? '#22c55e' : '#ef4444';
+                      oCtx.fillRect(x, y - 24, tw + 8, 24);
+                      
+                      oCtx.fillStyle = 'white';
+                      oCtx.fillText(label, x + 4, y - 6);
+                      
+                      if(isMatch) {
+                          anyMatch = true;
+                          addLog(`🚨 MATCH FOUND: ${f.match.name} (${(f.match.confidence*100).toFixed(1)}% confidence)`)
+                      }
+                   });
+                   
+                   if (faces.length > 0 && !anyMatch) {
+                      addLog(`Subject(s) evaluated: NO MATCH in registry.`);
+                   }
                 }
               } catch (e) {
                 addLog('ERROR: Connection to main server failed.')
@@ -103,13 +139,7 @@ export default function Live() {
       
       // Perform one initial scan then loop
       captureFrame()
-      interval = setInterval(captureFrame, 3000)
-      
-    } else {
-      if (interval) {
-        clearInterval(interval)
-        addLog('Live surveillance scan halted.')
-      }
+      interval = setInterval(captureFrame, 1500)
     }
     
     return () => {
@@ -120,7 +150,11 @@ export default function Live() {
 
   const toggleScan = () => {
     if (!stream) return
-    if (!isScanning) setLogs([]) // Clear old logs when starting fresh scan
+    if (!isScanning) {
+      setLogs([]) // Clear old logs when starting fresh scan
+    } else {
+      addLog('Live surveillance scan halted.')
+    }
     setIsScanning(!isScanning)
   }
 
@@ -158,6 +192,14 @@ export default function Live() {
               muted 
               className={`w-full h-full object-cover ${!stream ? 'hidden' : ''}`} 
             />
+            
+            {stream && (
+              <canvas 
+                 ref={overlayCanvasRef} 
+                 className="absolute inset-0 w-full h-full pointer-events-none object-cover" 
+                 style={{ opacity: isScanning ? 1 : 0 }}
+              />
+            )}
             
             {!stream && !error && (
               <div className="flex flex-col items-center text-slate-500">
